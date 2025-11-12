@@ -141,7 +141,6 @@ Once integrated, you can ask your AI assistant:
 - "Show me service order 12345"
 - "Search for assets with serial number X123"
 - "List all open service orders for client company 42"
-- "Upload this calibration certificate to service order 789"
 - "What documents are attached to service order 456?"
 
 The AI will automatically call the appropriate MCP tools and present results in a conversational format.
@@ -153,8 +152,7 @@ The server expects the following Qualer API endpoints (adjust in code if needed)
 - `GET /api/v1/service-orders/{id}` - Get service order
 - `GET /api/v1/service-orders?status=...&limit=...&cursor=...` - Search service orders
 - `GET /api/v1/assets/{id}` - Get asset
-- `GET /api/v1/assets/search?q=...&limit=...&cursor=...` - Search assets
-- `POST /api/v1/service-orders/{id}/documents` - Upload document
+- `GET /api/v1/assets` - List/search assets (server-side filtering)
 - `GET /api/v1/service-orders/{id}/documents` - List documents
 
 ## Customization
@@ -163,14 +161,14 @@ The server expects the following Qualer API endpoints (adjust in code if needed)
 
 ```python
 @mcp.tool()
-async def your_new_tool(
+def your_new_tool(
     param: str = Field(description="Your parameter"),
 ) -> YourModel:
     """
     Tool description for the AI agent.
     """
     client = get_client()
-    response = await client.get(f"/api/v1/your-endpoint/{param}")
+    response = client.get(f"/api/v1/your-endpoint/{param}")
     response.raise_for_status()
     return YourModel(**response.json())
 ```
@@ -179,9 +177,9 @@ async def your_new_tool(
 
 ```python
 @mcp.resource("qualer://your-resource/{id}")
-async def your_resource(id: int) -> str:
+def your_resource(id: int) -> str:
     """Read-only resource description."""
-    data = await your_tool(id)
+    data = your_tool(id)
     return data.model_dump_json(indent=2)
 ```
 

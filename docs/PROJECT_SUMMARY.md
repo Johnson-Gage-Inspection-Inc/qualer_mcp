@@ -106,10 +106,10 @@ Edit `qualer_mcp_server.py` and add:
 
 ```python
 @mcp.tool()
-async def your_tool(param: str = Field(...)) -> YourModel:
+def your_tool(param: str = Field(...)) -> YourModel:
     """Tool description for AI."""
     client = get_client()
-    response = await client.get(f"/api/v1/your-endpoint/{param}")
+    response = client.get(f"/api/v1/your-endpoint/{param}")
     response.raise_for_status()
     return YourModel(**response.json())
 ```
@@ -118,9 +118,9 @@ async def your_tool(param: str = Field(...)) -> YourModel:
 
 ```python
 @mcp.resource("qualer://your-resource/{id}")
-async def your_resource(id: int) -> str:
+def your_resource(id: int) -> str:
     """Resource description."""
-    data = await your_tool(id)
+    data = your_tool(id)
     return data.model_dump_json(indent=2)
 ```
 

@@ -105,7 +105,7 @@ If you don't have a token yet, you can still test the server structure:
 1. Comment out the token check in `init_client()`:
    ```python
    # if not token:
-   #     raise RuntimeError("QUALER_TOKEN environment variable is required.")
+   #     raise ValueError("QUALER_TOKEN environment variable is required")
    ```
 
 2. Run `mcp dev qualer_mcp_server.py` to inspect schemas

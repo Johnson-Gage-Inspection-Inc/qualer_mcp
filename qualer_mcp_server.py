@@ -202,6 +202,9 @@ def search_assets(
     When server_side=False: Fetches all assets and filters client-side.
 
     Server-side filtering recommended for production systems with many assets.
+
+    Returns dict with 'items' (asset list) and 'total' (matching count before
+    limit). Items are truncated to the limit parameter.
     """
     client = get_client()
 
@@ -219,7 +222,8 @@ def search_assets(
 
             # Convert SDK models to dicts
             assets = [asset.to_dict() for asset in response.parsed]
-            return {"items": assets[:limit], "total": len(assets)}
+            total = len(assets)
+            return {"items": assets[:limit], "total": total}
 
         # Fall back to client-side filtering for all assets
         response = get_all_assets.sync_detailed(client=client)
@@ -247,7 +251,8 @@ def search_assets(
             assets = [a for a in assets if matches_query(a)]
 
         # Apply limit
-        return {"items": assets[:limit], "total": len(assets)}
+        total = len(assets)
+        return {"items": assets[:limit], "total": total}
 
     except ValueError:
         # Re-raise ValueError as-is
