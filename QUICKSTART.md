@@ -25,8 +25,25 @@ Or copy `.env.example` to `.env` and fill in your token.
 
 ## Step 3: Test with MCP Dev Inspector (2 minutes)
 
+**Option A: Using Python directly (recommended for venv)**
+
 ```powershell
-# Launch the MCP dev inspector
+# Run from your activated venv
+python -c "import mcp; print('MCP installed successfully')"
+
+# The MCP dev inspector expects uv, which may not be installed.
+# Instead, test the server directly:
+python qualer_mcp_server.py
+# Press Ctrl+C after a few seconds if it starts without errors
+```
+
+**Option B: Using MCP dev inspector (requires uv)**
+
+```powershell
+# Install uv first
+pip install uv
+
+# Then launch the MCP dev inspector
 mcp dev qualer_mcp_server.py
 ```
 

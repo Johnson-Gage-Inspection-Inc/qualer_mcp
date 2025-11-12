@@ -2,9 +2,11 @@
 mcp[cli]>=0.9.0
 pydantic>=2.0.0
 httpx>=0.27.0
+python-dotenv>=1.0.0
 
 # Development dependencies
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
 black>=24.0.0
 ruff>=0.3.0
+git+https://github.com/Johnson-Gage-Inspection-Inc/qualer-sdk-python.git@13b2d5f30c92fd66cb6e5d0eb762a48f4597758c#egg=qualer_sdk

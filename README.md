@@ -51,12 +51,21 @@ Alternatively, copy `.env.example` to `.env` and fill in your values.
 
 ### 3. Test with MCP Dev Inspector
 
-```powershell
-# Test the server locally
-mcp dev qualer_mcp_server.py
+**Quick Test (Recommended)**
 
-# Or run as a module
-python -m mcp dev qualer_mcp_server
+```powershell
+# Run basic tests
+python test_server.py
+```
+
+**Full MCP Dev Inspector (Optional - requires uv)**
+
+```powershell
+# Install uv if not already installed
+pip install uv
+
+# Then run the dev inspector
+mcp dev qualer_mcp_server.py
 ```
 
 The MCP dev inspector provides an interactive UI to test tools, inspect schemas, and try resources.

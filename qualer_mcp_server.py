@@ -7,406 +7,261 @@ Exposes Qualer API operations as MCP tools and read-only data as resources.
 
 from __future__ import annotations
 
-import base64
 import os
-from typing import Any, Optional
+from typing import Optional
 
-import httpx
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from pydantic import BaseModel, Field
+from pydantic import Field
+from qualer_sdk import AuthenticatedClient
+from qualer_sdk.api.service_orders import get_work_order, get_work_orders
+from qualer_sdk.api.assets import get_asset as sdk_get_asset, get_all_assets
+from qualer_sdk.api.service_order_documents import get_documents_list
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 # ============================================================================
 # Configuration & Client
 # ============================================================================
 
-# Global client initialized in main()
-_client: Optional[httpx.AsyncClient] = None
+# Global SDK client
+_client: Optional[AuthenticatedClient] = None
 
 
-def get_client() -> httpx.AsyncClient:
-    """Get the initialized Qualer API client."""
+def get_client() -> AuthenticatedClient:
+    """Get the initialized Qualer SDK client."""
     if _client is None:
-        raise RuntimeError("Qualer client not initialized")
+        raise RuntimeError("Qualer SDK client not initialized")
     return _client
 
 
-async def init_client() -> httpx.AsyncClient:
-    """Initialize Qualer API client with auth from environment."""
-    base_url = os.environ.get(
-        "QUALER_BASE_URL", "https://jgiquality.qualer.com"
-    )
-    token = os.environ.get("QUALER_TOKEN", "")
-
+def init_client() -> AuthenticatedClient:
+    """Initialize the Qualer SDK client with credentials from environment."""
+    base_url = os.getenv("QUALER_BASE_URL", "https://jgiquality.qualer.com")
+    token = os.getenv("QUALER_TOKEN")
+    
     if not token:
-        raise RuntimeError(
-            "QUALER_TOKEN environment variable is required. "
-            "Set it in your shell or MCP client config."
-        )
-
-    # Create HTTP client with auth header
-    return httpx.AsyncClient(
+        raise ValueError("QUALER_TOKEN environment variable is required")
+    
+    return AuthenticatedClient(
         base_url=base_url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        timeout=30.0,
+        token=token,
+        raise_on_unexpected_status=True,
     )
-
-
-async def close_client(client: httpx.AsyncClient) -> None:
-    """Clean up HTTP client on shutdown."""
-    await client.aclose()
 
 
 # ============================================================================
-# MCP Server Setup
+# MCP Server Instance
 # ============================================================================
 
-
-mcp = FastMCP(
-    "Qualer SDK",
-    dependencies=["httpx", "pydantic"],
-)
+mcp = FastMCP("Qualer SDK")
 
 
 # ============================================================================
-# Pydantic Models (Structured Schemas for Agent Reasoning)
-# ============================================================================
-
-
-class ServiceOrder(BaseModel):
-    """Service order entity from Qualer API."""
-
-    id: int
-    number: str = Field(
-        description="Service order number (e.g., SO-12345)"
-    )
-    status: str = Field(
-        description="Current status (e.g., Open, In Progress, Closed)"
-    )
-    client_company_id: Optional[int] = None
-    client_company_name: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-
-class Asset(BaseModel):
-    """Asset/equipment entity from Qualer API."""
-
-    id: int
-    name: str = Field(description="Asset name or description")
-    serial_number: Optional[str] = Field(
-        None, description="Serial number or identifier"
-    )
-    model: Optional[str] = None
-    manufacturer: Optional[str] = None
-    client_company_id: Optional[int] = None
-    location: Optional[str] = None
-
-
-class Document(BaseModel):
-    """Document metadata from Qualer API."""
-
-    id: int
-    filename: str
-    uploaded_at: Optional[str] = None
-    uploaded_by: Optional[str] = None
-    size_bytes: Optional[int] = None
-
-
-class PaginatedResponse(BaseModel):
-    """Generic paginated response wrapper."""
-
-    items: list[Any] = Field(
-        description="List of items in current page"
-    )
-    next_cursor: Optional[str] = Field(
-        None, description="Cursor token for next page"
-    )
-    total_count: Optional[int] = Field(
-        None, description="Total items (if available)"
-    )
-
-
-class UploadResult(BaseModel):
-    """Result of document upload operation."""
-
-    success: bool
-    document_id: Optional[int] = None
-    message: str
-
-
-# ============================================================================
-# MCP Tools (Side-Effect Operations)
+# MCP Tools
 # ============================================================================
 
 
 @mcp.tool()
-async def get_service_order(
+def get_service_order(
     so_id: int = Field(description="Service order ID to retrieve"),
-) -> ServiceOrder:
+) -> dict:
     """
     Fetch a single service order by its ID.
-
+    
     Returns full details including status, client info, and timestamps.
     Use this when you need current information about a specific SO.
     """
     client = get_client()
-
+    
     try:
-        response = await client.get(f"/api/v1/service-orders/{so_id}")
-        response.raise_for_status()
-        data = response.json()
-        return ServiceOrder(**data)
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise ValueError(f"Service order {so_id} not found")
-        raise RuntimeError(
-            f"API error: {e.response.status_code} - {e.response.text}"
+        response = get_work_order.sync_detailed(
+            service_order_id=so_id,
+            client=client,
         )
+        
+        if response.status_code == 404:
+            raise ValueError(f"Service order {so_id} not found")
+        
+        if response.parsed is None:
+            raise ValueError(f"Failed to parse service order {so_id}")
+        
+        # Convert SDK model to dict
+        return response.parsed.to_dict()
+        
+    except Exception as e:
+        raise ValueError(f"Error fetching service order {so_id}: {str(e)}")
 
 
 @mcp.tool()
-async def search_service_orders(
-    status: Optional[str] = Field(
-        None, description="Filter by status (e.g., Open, Closed)"
-    ),
-    client_company_id: Optional[int] = Field(
-        None, description="Filter by client company ID"
-    ),
-    limit: int = Field(
-        25, description="Maximum items to return (1-100)", ge=1, le=100
-    ),
-    cursor: Optional[str] = Field(
-        None, description="Pagination cursor from previous response"
-    ),
-) -> PaginatedResponse:
+def search_service_orders(
+    status: str | None = Field(default=None, description="Filter by status (e.g., Open, Closed)"),
+    limit: int = Field(default=25, description="Maximum items to return (1-100)"),
+) -> dict:
     """
     Search service orders with optional filters and pagination.
-
-    Supports filtering by status and client company. Returns paginated
-    results with a cursor token for fetching additional pages.
+    
+    Supports filtering by status. Returns paginated results.
     """
     client = get_client()
-
-    params: dict[str, Any] = {"limit": limit}
-    if status:
-        params["status"] = status
-    if client_company_id:
-        params["client_company_id"] = client_company_id
-    if cursor:
-        params["cursor"] = cursor
-
+    
     try:
-        response = await client.get(
-            "/api/v1/service-orders", params=params
+        response = get_work_orders.sync_detailed(
+            client=client,
+            limit=limit,
+            status=status,
         )
-        response.raise_for_status()
-        data = response.json()
-
-        items = [ServiceOrder(**item) for item in data.get("items", [])]
-        return PaginatedResponse(
-            items=items,
-            next_cursor=data.get("next_cursor"),
-            total_count=data.get("total_count"),
-        )
-    except httpx.HTTPStatusError as e:
-        raise RuntimeError(
-            f"API error: {e.response.status_code} - {e.response.text}"
-        )
+        
+        if response.parsed is None:
+            raise ValueError("Failed to parse service orders")
+        
+        return response.parsed.to_dict()
+        
+    except Exception as e:
+        raise ValueError(f"Error searching service orders: {str(e)}")
 
 
 @mcp.tool()
-async def get_asset(
+def get_asset(
     asset_id: int = Field(description="Asset ID to retrieve"),
-) -> Asset:
+) -> dict:
     """
     Fetch a single asset/equipment record by its ID.
-
+    
     Returns full details including serial number, model, manufacturer,
     and location.
     """
     client = get_client()
-
+    
     try:
-        response = await client.get(f"/api/v1/assets/{asset_id}")
-        response.raise_for_status()
-        data = response.json()
-        return Asset(**data)
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise ValueError(f"Asset {asset_id} not found")
-        raise RuntimeError(
-            f"API error: {e.response.status_code} - {e.response.text}"
+        response = sdk_get_asset.sync_detailed(
+            asset_id=asset_id,
+            client=client,
         )
+        
+        if response.status_code == 404:
+            raise ValueError(f"Asset {asset_id} not found")
+        
+        if response.parsed is None:
+            raise ValueError(f"Failed to parse asset {asset_id}")
+        
+        return response.parsed.to_dict()
+        
+    except Exception as e:
+        raise ValueError(f"Error fetching asset {asset_id}: {str(e)}")
 
 
 @mcp.tool()
-async def search_assets(
+def search_assets(
     query: str = Field(
+        default="",
         description="Search query (name, serial number, model, etc.)"
     ),
-    client_company_id: Optional[int] = Field(
-        None, description="Filter by client company ID"
-    ),
     limit: int = Field(
-        25, description="Maximum items to return (1-100)", ge=1, le=100
+        default=100,
+        description="Maximum items to return"
     ),
-    cursor: Optional[str] = Field(
-        None, description="Pagination cursor from previous response"
-    ),
-) -> PaginatedResponse:
+) -> dict:
     """
-    Search assets with free-text query and optional filters.
-
-    The query searches across asset name, serial number, model, and
-    manufacturer. Returns paginated results with cursor token for
-    additional pages.
+    Search/list all assets.
+    
+    Returns all assets in the system. The SDK doesn't support
+    query-based searching, so this returns all assets.
     """
     client = get_client()
-
-    params: dict[str, Any] = {"q": query, "limit": limit}
-    if client_company_id:
-        params["client_company_id"] = client_company_id
-    if cursor:
-        params["cursor"] = cursor
-
+    
     try:
-        response = await client.get(
-            "/api/v1/assets/search", params=params
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        items = [Asset(**item) for item in data.get("items", [])]
-        return PaginatedResponse(
-            items=items,
-            next_cursor=data.get("next_cursor"),
-            total_count=data.get("total_count"),
-        )
-    except httpx.HTTPStatusError as e:
-        raise RuntimeError(
-            f"API error: {e.response.status_code} - {e.response.text}"
-        )
-
-
-@mcp.tool()
-async def upload_document_to_service_order(
-    so_id: int = Field(
-        description="Service order ID to attach document to"
-    ),
-    filename: str = Field(description="Document filename with extension"),
-    content_base64: str = Field(
-        description="Base64-encoded file content"
-    ),
-) -> UploadResult:
-    """
-    Upload and attach a document to a service order.
-
-    The document content must be base64-encoded. Common use cases:
-    - Certificates of calibration
-    - Test reports
-    - Photos of equipment
-    - Customer correspondence
-
-    Returns upload result with document ID on success.
-    """
-    client = get_client()
-
-    # Validate base64
-    try:
-        content_bytes = base64.b64decode(content_base64)
+        response = get_all_assets.sync_detailed(client=client)
+        
+        if response.parsed is None:
+            raise ValueError("Failed to parse assets")
+        
+        # Convert list of SDK models to list of dicts
+        assets = [asset.to_dict() for asset in response.parsed]
+        
+        # If query provided, filter results client-side
+        if query:
+            query_lower = query.lower()
+            assets = [
+                a for a in assets
+                if (query_lower in str(a.get('name', '')).lower() or
+                    query_lower in str(a.get('serial_number', '')).lower() or
+                    query_lower in str(a.get('model', '')).lower())
+            ]
+        
+        # Apply limit
+        return {"items": assets[:limit], "total": len(assets)}
+        
     except Exception as e:
-        return UploadResult(
-            success=False, message=f"Invalid base64 encoding: {e}"
-        )
-
-    payload = {
-        "filename": filename,
-        "content": content_base64,
-    }
-
-    try:
-        response = await client.post(
-            f"/api/v1/service-orders/{so_id}/documents", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        return UploadResult(
-            success=True,
-            document_id=data.get("id"),
-            message=f"Uploaded {filename} ({len(content_bytes)} bytes)",
-        )
-    except httpx.HTTPStatusError as e:
-        return UploadResult(
-            success=False,
-            message=(
-                f"Upload failed: {e.response.status_code} - "
-                f"{e.response.text}"
-            ),
-        )
+        raise ValueError(f"Error searching assets: {str(e)}")
 
 
 @mcp.tool()
-async def list_service_order_documents(
+def list_service_order_documents(
     so_id: int = Field(
         description="Service order ID to list documents for"
     ),
-) -> list[Document]:
+) -> dict:
     """
     List all documents attached to a service order.
-
+    
     Returns metadata for each document (filename, upload time, size).
-    Use get_service_order_document to retrieve actual file content.
     """
     client = get_client()
-
+    
     try:
-        response = await client.get(
-            f"/api/v1/service-orders/{so_id}/documents"
+        response = get_documents_list.sync_detailed(
+            service_order_id=so_id,
+            client=client,
         )
-        response.raise_for_status()
-        data = response.json()
-
-        return [Document(**doc) for doc in data.get("documents", [])]
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
+        
+        if response.status_code == 404:
             raise ValueError(f"Service order {so_id} not found")
-        raise RuntimeError(
-            f"API error: {e.response.status_code} - {e.response.text}"
-        )
+        
+        if response.parsed is None:
+            msg = f"Failed to parse documents for service order {so_id}"
+            raise ValueError(msg)
+        
+        # Convert list of SDK models to list of dicts
+        docs = [doc.to_dict() for doc in response.parsed]
+        return {"service_order_id": so_id, "documents": docs}
+        
+    except Exception as e:
+        msg = f"Error fetching documents for service order {so_id}: {str(e)}"
+        raise ValueError(msg)
 
 
 # ============================================================================
-# MCP Resources (Read-Only Context for Agent)
+# MCP Resources
 # ============================================================================
 
 
 @mcp.resource("qualer://service-order/{so_id}")
-async def service_order_resource(so_id: int) -> str:
+def service_order_resource(so_id: int) -> str:
     """
     Read-only view of a service order as formatted JSON.
-
+    
     Use this resource when you need to load service order context
     without making a direct API call. Ideal for agent reasoning tasks.
     """
-    so = await get_service_order(so_id)
-    return so.model_dump_json(indent=2)
+    import json
+    so = get_service_order(so_id)
+    return json.dumps(so, indent=2)
 
 
 @mcp.resource("qualer://asset/{asset_id}")
-async def asset_resource(asset_id: int) -> str:
+def asset_resource(asset_id: int) -> str:
     """
     Read-only view of an asset as formatted JSON.
-
+    
     Use this resource when you need to load asset/equipment context
     without making a direct API call. Ideal for agent reasoning tasks.
     """
-    asset = await get_asset(asset_id)
-    return asset.model_dump_json(indent=2)
+    import json
+    asset = get_asset(asset_id)
+    return json.dumps(asset, indent=2)
 
 
 # ============================================================================
@@ -414,18 +269,17 @@ async def asset_resource(asset_id: int) -> str:
 # ============================================================================
 
 
-async def main():
+def main():
     """Launch MCP server over stdio transport."""
     global _client
-    _client = await init_client()
-    try:
-        # Run the MCP server
-        mcp.run()
-    finally:
-        await close_client(_client)
+    
+    # Initialize SDK client
+    _client = init_client()
+    
+    # Run the MCP server
+    mcp.run()
 
 
 if __name__ == "__main__":
-    import asyncio
     # CRITICAL: Never print to stdout on stdio transport
-    asyncio.run(main())
+    main()
