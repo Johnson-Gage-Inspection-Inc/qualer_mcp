@@ -159,7 +159,7 @@ def get_asset(
 
     try:
         response = sdk_get_asset.sync_detailed(
-            asset_id=asset_id,
+            id=asset_id,
             client=client,
         )
 
