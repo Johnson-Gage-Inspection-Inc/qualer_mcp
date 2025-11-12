@@ -2,11 +2,7 @@
   "mcpServers": {
     "qualer": {
       "command": "python",
-      "args": ["-m", "qualer_mcp_server"],
-      "env": {
-        "QUALER_BASE_URL": "https://jgiquality.qualer.com",
-        "QUALER_TOKEN": ""
-      }
+      "args": ["-m", "qualer_mcp_server"]
     }
   }
 }
