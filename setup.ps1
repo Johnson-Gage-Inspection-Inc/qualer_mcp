@@ -8,10 +8,10 @@ Write-Host ""
 # Check Python version
 Write-Host "Checking Python version..." -ForegroundColor Yellow
 $pythonVersion = python --version 2>&1
-if ($pythonVersion -match "Python 3\.1[0-9]") {
+if ($pythonVersion -match "Python 3\.(1[0-2])") {
     Write-Host "✓ Python version: $pythonVersion" -ForegroundColor Green
 } else {
-    Write-Host "✗ Python 3.10+ required. Found: $pythonVersion" -ForegroundColor Red
+    Write-Host "✗ Python 3.10-3.12 required. Found: $pythonVersion" -ForegroundColor Red
     exit 1
 }
 
