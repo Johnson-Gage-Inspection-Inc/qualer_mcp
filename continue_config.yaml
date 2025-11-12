@@ -1,0 +1,9 @@
+mcpServers:
+  - name: Qualer
+    command: python
+    args:
+      - "-m"
+      - "qualer_mcp_server"
+    env:
+      QUALER_BASE_URL: https://jgiquality.qualer.com
+      QUALER_TOKEN: ${env:QUALER_TOKEN}
