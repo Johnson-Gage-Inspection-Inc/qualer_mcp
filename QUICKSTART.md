@@ -23,24 +23,31 @@ $env:QUALER_TOKEN = "your_actual_api_token_here"
 
 Or copy `.env.example` to `.env` and fill in your token.
 
-## Step 3: Test with MCP Dev Inspector (2 minutes)
+## Step 3: Test the Server (2 minutes)
 
-**Option A: Using Python directly (recommended for venv)**
+**Option A: Quick validation (recommended)**
 
 ```powershell
-# Run from your activated venv
-python -c "import mcp; print('MCP installed successfully')"
-
-# The MCP dev inspector expects uv, which may not be installed.
-# Instead, test the server directly:
-python qualer_mcp_server.py
-# Press Ctrl+C after a few seconds if it starts without errors
+python test_server.py
 ```
 
-**Option B: Using MCP dev inspector (requires uv)**
+This will validate that:
+- The module imports correctly
+- Pydantic models work
+- MCP server initializes
+
+**Option B: Test with actual API call**
 
 ```powershell
-# Install uv first
+python test_api_call.py
+```
+
+This will attempt to fetch a real service order from the API.
+
+**Option C: Using MCP dev inspector (requires uv)**
+
+```powershell
+# Install uv first (one-time)
 pip install uv
 
 # Then launch the MCP dev inspector
@@ -48,35 +55,9 @@ mcp dev qualer_mcp_server.py
 ```
 
 This opens an interactive UI in your browser where you can:
-
-1. **View Tools** - See all available MCP tools (get_service_order, search_assets, etc.)
+1. **View Tools** - See all available MCP tools
 2. **Test Tools** - Call tools with test parameters and see results
-3. **Inspect Schemas** - View Pydantic model schemas and field descriptions
-4. **Try Resources** - Load read-only resources like `qualer://service-order/123`
-
-### Example Tool Calls in Dev Inspector
-
-**Get a service order:**
-```json
-{
-  "so_id": 12345
-}
-```
-
-**Search assets:**
-```json
-{
-  "query": "serial:X123",
-  "limit": 10
-}
-```
-
-**List documents:**
-```json
-{
-  "so_id": 12345
-}
-```
+3. **Inspect Schemas** - View Pydantic model schemas
 
 ## Step 4: Integrate with Claude Desktop (2 minutes)
 

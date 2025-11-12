@@ -97,8 +97,8 @@ def get_service_order(
 
 @mcp.tool()
 def search_service_orders(
-    status: str | None = Field(default=None, description="Filter by status (e.g., Open, Closed)"),
-    limit: int = Field(default=25, description="Maximum items to return (1-100)"),
+    status: Optional[str] = Field(default=None, description="Filter by status (e.g., Open, Closed)"),
+    limit: int = Field(default=25, ge=1, le=100, description="Maximum items to return (1-100)"),
 ) -> dict:
     """
     Search service orders with optional filters and pagination.
@@ -155,20 +155,26 @@ def get_asset(
 
 @mcp.tool()
 def search_assets(
-    query: str = Field(
-        default="",
+    query: Optional[str] = Field(
+        default=None,
         description="Search query (name, serial number, model, etc.)"
     ),
     limit: int = Field(
-        default=100,
-        description="Maximum items to return"
+        default=25,
+        ge=1,
+        le=100,
+        description="Maximum items to return (1-100)"
     ),
 ) -> dict:
     """
     Search/list all assets.
     
     Returns all assets in the system. The SDK doesn't support
-    query-based searching, so this returns all assets.
+    query-based searching, so this returns all assets with client-side
+    filtering if a query is provided.
+    
+    Note: This fetches all assets from the API and filters client-side.
+    For large datasets, this may be memory-intensive.
     """
     client = get_client()
     
