@@ -7,6 +7,7 @@ Exposes Qualer API operations as MCP tools and read-only data as resources.
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Optional
 
@@ -92,8 +93,13 @@ def get_service_order(
         # Convert SDK model to dict
         return response.parsed.to_dict()
 
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
     except Exception as e:
-        raise ValueError(f"Error fetching service order {so_id}: {str(e)}")
+        raise ValueError(
+            f"Error fetching service order {so_id}: {str(e)}"
+        ) from e
 
 
 @mcp.tool()
@@ -122,8 +128,13 @@ def search_service_orders(
 
         return response.parsed.to_dict()
 
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
     except Exception as e:
-        raise ValueError(f"Error searching service orders: {str(e)}")
+        raise ValueError(
+            f"Error searching service orders: {str(e)}"
+        ) from e
 
 
 @mcp.tool()
@@ -152,26 +163,34 @@ def get_asset(
 
         return response.parsed.to_dict()
 
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
     except Exception as e:
-        raise ValueError(f"Error fetching asset {asset_id}: {str(e)}")
+        raise ValueError(
+            f"Error fetching asset {asset_id}: {str(e)}"
+        ) from e
 
 
 @mcp.tool()
 def search_assets(
     query: Optional[str] = Field(
-        default=None, description="Search query (name, serial number, model, etc.)"
+        default=None,
+        description="Search query (name, serial number, model, etc.)",
     ),
-    limit: int = Field(default=25, ge=1, le=100, description="Maximum items to return (1-100)"),
+    limit: int = Field(
+        default=25, ge=1, le=100,
+        description="Maximum items to return (1-100)",
+    ),
 ) -> dict:
     """
     Search/list all assets.
 
-    Returns all assets in the system. The SDK doesn't support
-    query-based searching, so this returns all assets with client-side
-    filtering if a query is provided.
+    Returns all assets in the system with optional client-side filtering.
 
-    Note: This fetches all assets from the API and filters client-side.
-    For large datasets, this may be memory-intensive.
+    Note: This function fetches ALL assets from the API and filters
+    client-side. For systems with large asset counts, this may be
+    memory-intensive. Consider API pagination improvements for production use.
     """
     client = get_client()
 
@@ -192,7 +211,8 @@ def search_assets(
                 for a in assets
                 if (
                     query_lower in str(a.get("name", "")).lower()
-                    or query_lower in str(a.get("serial_number", "")).lower()
+                    or query_lower
+                    in str(a.get("serial_number", "")).lower()
                     or query_lower in str(a.get("model", "")).lower()
                 )
             ]
@@ -200,8 +220,13 @@ def search_assets(
         # Apply limit
         return {"items": assets[:limit], "total": len(assets)}
 
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
     except Exception as e:
-        raise ValueError(f"Error searching assets: {str(e)}")
+        raise ValueError(
+            f"Error searching assets: {str(e)}"
+        ) from e
 
 
 @mcp.tool()
@@ -232,9 +257,12 @@ def list_service_order_documents(
         docs = [doc.to_dict() for doc in response.parsed]
         return {"service_order_id": so_id, "documents": docs}
 
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
     except Exception as e:
-        msg = f"Error fetching documents for service order {so_id}: {str(e)}"
-        raise ValueError(msg)
+        msg = f"Error fetching documents for SO {so_id}: {str(e)}"
+        raise ValueError(msg) from e
 
 
 # ============================================================================
@@ -250,8 +278,6 @@ def service_order_resource(so_id: int) -> str:
     Use this resource when you need to load service order context
     without making a direct API call. Ideal for agent reasoning tasks.
     """
-    import json
-
     so = get_service_order(so_id)
     return json.dumps(so, indent=2)
 
@@ -264,8 +290,6 @@ def asset_resource(asset_id: int) -> str:
     Use this resource when you need to load asset/equipment context
     without making a direct API call. Ideal for agent reasoning tasks.
     """
-    import json
-
     asset = get_asset(asset_id)
     return json.dumps(asset, indent=2)
 
