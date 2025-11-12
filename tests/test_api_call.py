@@ -25,20 +25,20 @@ def test_init_client(qualer_client):
 
 def test_get_service_order_valid(qualer_client):
     """Test fetching a valid service order.
-    
+
     Note: This test uses a known service order ID.
     Update 1175961 if this ID is no longer valid in your test environment.
     """
     try:
         result = get_service_order(1175961)
-        
+
         # Verify it's a dict with expected fields
         assert isinstance(result, dict)
         assert "ServiceOrderId" in result
         assert result["ServiceOrderId"] == 1175961
         assert "ServiceOrderNumber" in result
         assert "OrderStatus" in result
-        
+
     except ValueError as e:
         pytest.skip(f"Service order not available in test environment: {e}")
 
@@ -47,7 +47,7 @@ def test_service_order_response_format(qualer_client):
     """Test that service order response has expected structure."""
     try:
         result = get_service_order(1175961)
-        
+
         # Check important fields
         required_fields = [
             "ServiceOrderId",
@@ -57,6 +57,6 @@ def test_service_order_response_format(qualer_client):
         ]
         for field in required_fields:
             assert field in result, f"Missing field: {field}"
-            
+
     except ValueError:
         pytest.skip("Service order not available in test environment")

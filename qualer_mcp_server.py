@@ -17,6 +17,7 @@ from pydantic import Field
 from qualer_sdk import AuthenticatedClient
 from qualer_sdk.api.assets import get_all_assets
 from qualer_sdk.api.assets import get_asset as sdk_get_asset
+from qualer_sdk.api.assets import get_asset_manager_list
 from qualer_sdk.api.service_order_documents import get_documents_list
 from qualer_sdk.api.service_orders import get_work_order, get_work_orders
 
@@ -103,9 +104,7 @@ def get_service_order(
         # Re-raise ValueError as-is
         raise
     except Exception as e:
-        raise ValueError(
-            f"Error fetching service order {so_id}: {str(e)}"
-        ) from e
+        raise ValueError(f"Error fetching service order {so_id}: {str(e)}") from e
 
 
 @mcp.tool()
@@ -143,9 +142,7 @@ def search_service_orders(
         # Re-raise ValueError as-is
         raise
     except Exception as e:
-        raise ValueError(
-            f"Error searching service orders: {str(e)}"
-        ) from e
+        raise ValueError(f"Error searching service orders: {str(e)}") from e
 
 
 @mcp.tool()
@@ -178,9 +175,7 @@ def get_asset(
         # Re-raise ValueError as-is
         raise
     except Exception as e:
-        raise ValueError(
-            f"Error fetching asset {asset_id}: {str(e)}"
-        ) from e
+        raise ValueError(f"Error fetching asset {asset_id}: {str(e)}") from e
 
 
 @mcp.tool()
@@ -190,22 +185,43 @@ def search_assets(
         description="Search query (name, serial number, model, etc.)",
     ),
     limit: int = Field(
-        default=25, ge=1, le=100,
+        default=25,
+        ge=1,
+        le=100,
         description="Maximum items to return (1-100)",
+    ),
+    server_side: bool = Field(
+        default=True,
+        description="Use server-side filtering (faster for large datasets)",
     ),
 ) -> dict:
     """
-    Search/list all assets.
+    Search/list assets with optional filtering.
 
-    Returns all assets in the system with optional client-side filtering.
+    When server_side=True (default): Uses server-side search for efficiency.
+    When server_side=False: Fetches all assets and filters client-side.
 
-    Note: This function fetches ALL assets from the API and filters
-    client-side. For systems with large asset counts, this may be
-    memory-intensive. Consider API pagination improvements for production use.
+    Server-side filtering recommended for production systems with many assets.
     """
     client = get_client()
 
     try:
+        # Use server-side filtering if query provided
+        if query and server_side:
+            response = get_asset_manager_list.sync_detailed(
+                client=client,
+                model_search_string=query,
+                model_page_size=limit,
+            )
+
+            if response.parsed is None:
+                raise ValueError("Failed to parse assets")
+
+            # Convert SDK models to dicts
+            assets = [asset.to_dict() for asset in response.parsed]
+            return {"items": assets[:limit], "total": len(assets)}
+
+        # Fall back to client-side filtering for all assets
         response = get_all_assets.sync_detailed(client=client)
 
         if response.parsed is None:
@@ -237,9 +253,7 @@ def search_assets(
         # Re-raise ValueError as-is
         raise
     except Exception as e:
-        raise ValueError(
-            f"Error searching assets: {str(e)}"
-        ) from e
+        raise ValueError(f"Error searching assets: {str(e)}") from e
 
 
 @mcp.tool()

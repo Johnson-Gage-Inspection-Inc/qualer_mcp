@@ -95,7 +95,7 @@ The server expects these Qualer API endpoints (adjust if needed):
 - `GET /api/v1/service-orders/{id}`
 - `GET /api/v1/service-orders?status=...&limit=...&cursor=...`
 - `GET /api/v1/assets/{id}`
-- `GET /api/v1/assets (client-side filtering applied)`
+- `GET /api/v1/assets (server-side search via manager list endpoint)`
 - `GET /api/v1/service-orders/{id}/documents`
 
 ## Customization Points
