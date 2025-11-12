@@ -112,6 +112,15 @@ def search_service_orders(
     status: Optional[str] = Field(
         default=None, description="Filter by status (e.g., Open, Closed)"
     ),
+    company_id: Optional[int] = Field(
+        default=None, description="Filter by client company ID"
+    ),
+    work_order_number: Optional[str] = Field(
+        default=None, description="Filter by work order number"
+    ),
+    assigned_employees: Optional[str] = Field(
+        default=None, description="Filter by assigned employee names"
+    ),
     limit: int = Field(
         default=25,
         ge=1,
@@ -122,27 +131,44 @@ def search_service_orders(
     """
     Search service orders with optional filters and pagination.
 
-    Supports filtering by status. Returns paginated results.
+    Supports filtering by status, company, work order number, and assigned
+    employees. Returns paginated results.
+
+    Returns dict with 'items' (service order list, truncated to limit) and
+    'total' (total count of all matching orders, not limited).
     """
     client = get_client()
 
     try:
         response = get_work_orders.sync_detailed(
             client=client,
-            limit=limit,
             status=status,
+            company_id=company_id,
+            work_order_number=work_order_number,
+            assigned_employees=assigned_employees,
         )
 
         if response.parsed is None:
             raise ValueError("Failed to parse service orders")
 
-        return response.parsed.to_dict()
+        # Convert list of SDK models to dicts
+        items = [
+            item.to_dict() for item in response.parsed
+        ] if response.parsed else []
+
+        # Calculate total before limiting (represents all matching results)
+        total = len(items)
+
+        # Apply limit and return
+        return {"items": items[:limit], "total": total}
 
     except ValueError:
         # Re-raise ValueError as-is
         raise
     except Exception as e:
-        raise ValueError(f"Error searching service orders: {str(e)}") from e
+        raise ValueError(
+            f"Error searching service orders: {str(e)}"
+        ) from e
 
 
 @mcp.tool()
@@ -201,38 +227,38 @@ def search_assets(
     When server_side=True (default): Uses server-side search for efficiency.
     When server_side=False: Fetches all assets and filters client-side.
 
-    Server-side filtering recommended for production systems with many assets.
+    Returns dict with 'items' (asset list, truncated to limit) and 'total'
+    (total count of matching assets across all results, not limited).
 
-    Returns dict with 'items' (asset list) and 'total' (matching count before
-    limit). Items are truncated to the limit parameter.
+    Server-side filtering recommended for production systems with many assets.
     """
     client = get_client()
 
     try:
         # Use server-side filtering if query provided
         if query and server_side:
-            response = get_asset_manager_list.sync_detailed(
+            server_response = get_asset_manager_list.sync_detailed(
                 client=client,
                 model_search_string=query,
                 model_page_size=limit,
             )
 
-            if response.parsed is None:
+            if server_response.parsed is None:
                 raise ValueError("Failed to parse assets")
 
             # Convert SDK models to dicts
-            assets = [asset.to_dict() for asset in response.parsed]
+            assets = [asset.to_dict() for asset in server_response.parsed]
             total = len(assets)
             return {"items": assets[:limit], "total": total}
 
         # Fall back to client-side filtering for all assets
-        response = get_all_assets.sync_detailed(client=client)
+        all_response = get_all_assets.sync_detailed(client=client)
 
-        if response.parsed is None:
+        if all_response.parsed is None:
             raise ValueError("Failed to parse assets")
 
         # Convert list of SDK models to list of dicts
-        assets = [asset.to_dict() for asset in response.parsed]
+        assets = [asset.to_dict() for asset in all_response.parsed]
 
         # If query provided, filter results client-side
         if query:
@@ -250,8 +276,10 @@ def search_assets(
 
             assets = [a for a in assets if matches_query(a)]
 
-        # Apply limit
+        # Calculate total before limiting (represents all matching results)
         total = len(assets)
+
+        # Apply limit and return
         return {"items": assets[:limit], "total": total}
 
     except ValueError:
