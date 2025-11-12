@@ -23,28 +23,27 @@ $env:QUALER_TOKEN = "your_actual_api_token_here"
 
 Or copy `.env.example` to `.env` and fill in your token.
 
-## Step 3: Test the Server (2 minutes)
+## Step 3: Run Tests (2 minutes)
 
-**Option A: Quick validation (recommended)**
-
-```powershell
-python test_server.py
-```
-
-This will validate that:
-- The module imports correctly
-- Pydantic models work
-- MCP server initializes
-
-**Option B: Test with actual API call**
+**All tests use pytest:**
 
 ```powershell
-python test_api_call.py
+# Run all tests
+python -m pytest tests/ -v
+
+# Run a specific test file
+python -m pytest tests/test_server.py -v
+
+# Run integration tests with API calls
+python -m pytest tests/test_api_call.py -v
 ```
 
-This will attempt to fetch a real service order from the API.
+The test suite includes:
+- **test_server.py** - Basic server initialization and structure tests
+- **test_api_call.py** - Integration tests with real API calls
+- **test_qualer_mcp.py** - Tool availability and function tests
 
-**Option C: Using MCP dev inspector (requires uv)**
+**Option (Alternative): Using MCP dev inspector (requires uv)**
 
 ```powershell
 # Install uv first (one-time)

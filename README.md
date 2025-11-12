@@ -49,16 +49,27 @@ setx QUALER_TOKEN "your_api_token_here"
 
 Alternatively, copy `.env.example` to `.env` and fill in your values.
 
-### 3. Test with MCP Dev Inspector
+### 3. Run Tests
 
-**Quick Test (Recommended)**
+**Using pytest (recommended):**
 
 ```powershell
-# Run basic tests
-python test_server.py
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test file
+python -m pytest tests/test_server.py -v
+
+# Run with coverage
+python -m pytest tests/ --cov=qualer_mcp_server
 ```
 
-**Full MCP Dev Inspector (Optional - requires uv)**
+Test files include:
+- `tests/test_server.py` - Server initialization and structure
+- `tests/test_api_call.py` - Integration tests with real API calls  
+- `tests/test_qualer_mcp.py` - Tool availability tests
+
+**Optional: Using MCP dev inspector (requires uv)**
 
 ```powershell
 # Install uv if not already installed
