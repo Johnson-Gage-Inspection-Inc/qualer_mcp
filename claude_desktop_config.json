@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "qualer": {
+      "command": "python",
+      "args": ["-m", "qualer_mcp_server"]
+    }
+  }
+}
