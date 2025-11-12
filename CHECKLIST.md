@@ -75,7 +75,7 @@ Use this checklist to verify your setup is complete and working.
   ```
 
 - [ ] Verify dev inspector opens in browser
-  - Should see list of 6 tools
+  - Should see list of 5 tools
   - Should see list of 2 resources
 
 - [ ] Test a tool in dev inspector
@@ -90,7 +90,7 @@ Use this checklist to verify your setup is complete and working.
 - [ ] Run unit tests (optional)
   ```powershell
   pytest test_qualer_mcp.py
-  # Should show 4 passing tests
+  # Should show 5 passing tests
   ```
 
 ## Claude Desktop Integration

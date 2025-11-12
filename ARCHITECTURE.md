@@ -20,12 +20,11 @@
 │                (qualer_mcp_server.py)                           │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    MCP Tools (6)                         │  │
+│  │                    MCP Tools (5)                         │  │
 │  │  • get_service_order                                     │  │
 │  │  • search_service_orders                                 │  │
 │  │  • get_asset                                             │  │
 │  │  • search_assets                                         │  │
-│  │  • upload_document_to_service_order                      │  │
 │  │  • list_service_order_documents                          │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
@@ -64,8 +63,7 @@
 │  • GET  /api/v1/service-orders/{id}                             │
 │  • GET  /api/v1/service-orders?status=...&limit=...&cursor=...  │
 │  • GET  /api/v1/assets/{id}                                     │
-│  • GET  /api/v1/assets/search?q=...&limit=...&cursor=...        │
-│  • POST /api/v1/service-orders/{id}/documents                   │
+│  • GET  /api/v1/assets (client-side filtering applied)          │
 │  • GET  /api/v1/service-orders/{id}/documents                   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘

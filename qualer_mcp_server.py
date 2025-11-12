@@ -39,6 +39,12 @@ def get_client() -> AuthenticatedClient:
     return _client
 
 
+def set_client(client: AuthenticatedClient) -> None:
+    """Set the Qualer SDK client (used for testing)."""
+    global _client
+    _client = client
+
+
 def init_client() -> AuthenticatedClient:
     """Initialize the Qualer SDK client with credentials from environment."""
     base_url = os.getenv("QUALER_BASE_URL", "https://jgiquality.qualer.com")
@@ -107,7 +113,12 @@ def search_service_orders(
     status: Optional[str] = Field(
         default=None, description="Filter by status (e.g., Open, Closed)"
     ),
-    limit: int = Field(default=25, ge=1, le=100, description="Maximum items to return (1-100)"),
+    limit: int = Field(
+        default=25,
+        ge=1,
+        le=100,
+        description="Maximum items to return (1-100)",
+    ),
 ) -> dict:
     """
     Search service orders with optional filters and pagination.
@@ -206,16 +217,18 @@ def search_assets(
         # If query provided, filter results client-side
         if query:
             query_lower = query.lower()
-            assets = [
-                a
-                for a in assets
-                if (
-                    query_lower in str(a.get("name", "")).lower()
-                    or query_lower
-                    in str(a.get("serial_number", "")).lower()
-                    or query_lower in str(a.get("model", "")).lower()
+
+            def matches_query(asset: dict) -> bool:
+                name = asset.get("name")
+                serial = asset.get("serial_number")
+                model = asset.get("model")
+                return bool(
+                    (name and query_lower in str(name).lower())
+                    or (serial and query_lower in str(serial).lower())
+                    or (model and query_lower in str(model).lower())
                 )
-            ]
+
+            assets = [a for a in assets if matches_query(a)]
 
         # Apply limit
         return {"items": assets[:limit], "total": len(assets)}

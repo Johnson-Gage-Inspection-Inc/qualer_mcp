@@ -7,15 +7,14 @@ Run with: pytest tests/test_api_call.py -v
 
 import pytest
 
-import qualer_mcp_server
-from qualer_mcp_server import get_service_order, init_client
+from qualer_mcp_server import get_service_order, init_client, set_client
 
 
 @pytest.fixture
 def qualer_client():
     """Initialize the Qualer SDK client."""
     client = init_client()
-    qualer_mcp_server._client = client
+    set_client(client)
     return client
 
 

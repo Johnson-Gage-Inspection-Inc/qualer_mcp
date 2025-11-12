@@ -9,7 +9,6 @@ Production-ready MCP server wrapping the Qualer SDK for AI agent integration. Ex
   - `search_service_orders` - Search with filters and pagination
   - `get_asset` - Fetch asset/equipment by ID
   - `search_assets` - Free-text asset search
-  - `upload_document_to_service_order` - Attach documents (base64)
   - `list_service_order_documents` - List document metadata
 
 - **MCP Resources** for read-only context:

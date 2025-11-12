@@ -7,12 +7,11 @@ This repository contains a production-ready MCP (Model Context Protocol) server 
 ## What Was Built
 
 ### Core Server (`qualer_mcp_server.py`)
-- **6 MCP Tools** for API operations:
+- **5 MCP Tools** for API operations:
   - `get_service_order` - Fetch single service order
   - `search_service_orders` - Search with filters & pagination
   - `get_asset` - Fetch single asset/equipment
   - `search_assets` - Free-text asset search
-  - `upload_document_to_service_order` - Attach documents (base64)
   - `list_service_order_documents` - List document metadata
 
 - **2 MCP Resources** for read-only context:
@@ -96,8 +95,7 @@ The server expects these Qualer API endpoints (adjust if needed):
 - `GET /api/v1/service-orders/{id}`
 - `GET /api/v1/service-orders?status=...&limit=...&cursor=...`
 - `GET /api/v1/assets/{id}`
-- `GET /api/v1/assets/search?q=...&limit=...&cursor=...`
-- `POST /api/v1/service-orders/{id}/documents`
+- `GET /api/v1/assets (client-side filtering applied)`
 - `GET /api/v1/service-orders/{id}/documents`
 
 ## Customization Points
