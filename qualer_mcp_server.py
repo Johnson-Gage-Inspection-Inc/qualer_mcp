@@ -14,9 +14,10 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 from qualer_sdk import AuthenticatedClient
-from qualer_sdk.api.service_orders import get_work_order, get_work_orders
-from qualer_sdk.api.assets import get_asset as sdk_get_asset, get_all_assets
+from qualer_sdk.api.assets import get_all_assets
+from qualer_sdk.api.assets import get_asset as sdk_get_asset
 from qualer_sdk.api.service_order_documents import get_documents_list
+from qualer_sdk.api.service_orders import get_work_order, get_work_orders
 
 # Load environment variables from .env file
 load_dotenv()
@@ -41,10 +42,10 @@ def init_client() -> AuthenticatedClient:
     """Initialize the Qualer SDK client with credentials from environment."""
     base_url = os.getenv("QUALER_BASE_URL", "https://jgiquality.qualer.com")
     token = os.getenv("QUALER_TOKEN")
-    
+
     if not token:
         raise ValueError("QUALER_TOKEN environment variable is required")
-    
+
     return AuthenticatedClient(
         base_url=base_url,
         token=token,
@@ -70,55 +71,57 @@ def get_service_order(
 ) -> dict:
     """
     Fetch a single service order by its ID.
-    
+
     Returns full details including status, client info, and timestamps.
     Use this when you need current information about a specific SO.
     """
     client = get_client()
-    
+
     try:
         response = get_work_order.sync_detailed(
             service_order_id=so_id,
             client=client,
         )
-        
+
         if response.status_code == 404:
             raise ValueError(f"Service order {so_id} not found")
-        
+
         if response.parsed is None:
             raise ValueError(f"Failed to parse service order {so_id}")
-        
+
         # Convert SDK model to dict
         return response.parsed.to_dict()
-        
+
     except Exception as e:
         raise ValueError(f"Error fetching service order {so_id}: {str(e)}")
 
 
 @mcp.tool()
 def search_service_orders(
-    status: Optional[str] = Field(default=None, description="Filter by status (e.g., Open, Closed)"),
+    status: Optional[str] = Field(
+        default=None, description="Filter by status (e.g., Open, Closed)"
+    ),
     limit: int = Field(default=25, ge=1, le=100, description="Maximum items to return (1-100)"),
 ) -> dict:
     """
     Search service orders with optional filters and pagination.
-    
+
     Supports filtering by status. Returns paginated results.
     """
     client = get_client()
-    
+
     try:
         response = get_work_orders.sync_detailed(
             client=client,
             limit=limit,
             status=status,
         )
-        
+
         if response.parsed is None:
             raise ValueError("Failed to parse service orders")
-        
+
         return response.parsed.to_dict()
-        
+
     except Exception as e:
         raise ValueError(f"Error searching service orders: {str(e)}")
 
@@ -129,26 +132,26 @@ def get_asset(
 ) -> dict:
     """
     Fetch a single asset/equipment record by its ID.
-    
+
     Returns full details including serial number, model, manufacturer,
     and location.
     """
     client = get_client()
-    
+
     try:
         response = sdk_get_asset.sync_detailed(
             asset_id=asset_id,
             client=client,
         )
-        
+
         if response.status_code == 404:
             raise ValueError(f"Asset {asset_id} not found")
-        
+
         if response.parsed is None:
             raise ValueError(f"Failed to parse asset {asset_id}")
-        
+
         return response.parsed.to_dict()
-        
+
     except Exception as e:
         raise ValueError(f"Error fetching asset {asset_id}: {str(e)}")
 
@@ -156,84 +159,79 @@ def get_asset(
 @mcp.tool()
 def search_assets(
     query: Optional[str] = Field(
-        default=None,
-        description="Search query (name, serial number, model, etc.)"
+        default=None, description="Search query (name, serial number, model, etc.)"
     ),
-    limit: int = Field(
-        default=25,
-        ge=1,
-        le=100,
-        description="Maximum items to return (1-100)"
-    ),
+    limit: int = Field(default=25, ge=1, le=100, description="Maximum items to return (1-100)"),
 ) -> dict:
     """
     Search/list all assets.
-    
+
     Returns all assets in the system. The SDK doesn't support
     query-based searching, so this returns all assets with client-side
     filtering if a query is provided.
-    
+
     Note: This fetches all assets from the API and filters client-side.
     For large datasets, this may be memory-intensive.
     """
     client = get_client()
-    
+
     try:
         response = get_all_assets.sync_detailed(client=client)
-        
+
         if response.parsed is None:
             raise ValueError("Failed to parse assets")
-        
+
         # Convert list of SDK models to list of dicts
         assets = [asset.to_dict() for asset in response.parsed]
-        
+
         # If query provided, filter results client-side
         if query:
             query_lower = query.lower()
             assets = [
-                a for a in assets
-                if (query_lower in str(a.get('name', '')).lower() or
-                    query_lower in str(a.get('serial_number', '')).lower() or
-                    query_lower in str(a.get('model', '')).lower())
+                a
+                for a in assets
+                if (
+                    query_lower in str(a.get("name", "")).lower()
+                    or query_lower in str(a.get("serial_number", "")).lower()
+                    or query_lower in str(a.get("model", "")).lower()
+                )
             ]
-        
+
         # Apply limit
         return {"items": assets[:limit], "total": len(assets)}
-        
+
     except Exception as e:
         raise ValueError(f"Error searching assets: {str(e)}")
 
 
 @mcp.tool()
 def list_service_order_documents(
-    so_id: int = Field(
-        description="Service order ID to list documents for"
-    ),
+    so_id: int = Field(description="Service order ID to list documents for"),
 ) -> dict:
     """
     List all documents attached to a service order.
-    
+
     Returns metadata for each document (filename, upload time, size).
     """
     client = get_client()
-    
+
     try:
         response = get_documents_list.sync_detailed(
             service_order_id=so_id,
             client=client,
         )
-        
+
         if response.status_code == 404:
             raise ValueError(f"Service order {so_id} not found")
-        
+
         if response.parsed is None:
             msg = f"Failed to parse documents for service order {so_id}"
             raise ValueError(msg)
-        
+
         # Convert list of SDK models to list of dicts
         docs = [doc.to_dict() for doc in response.parsed]
         return {"service_order_id": so_id, "documents": docs}
-        
+
     except Exception as e:
         msg = f"Error fetching documents for service order {so_id}: {str(e)}"
         raise ValueError(msg)
@@ -248,11 +246,12 @@ def list_service_order_documents(
 def service_order_resource(so_id: int) -> str:
     """
     Read-only view of a service order as formatted JSON.
-    
+
     Use this resource when you need to load service order context
     without making a direct API call. Ideal for agent reasoning tasks.
     """
     import json
+
     so = get_service_order(so_id)
     return json.dumps(so, indent=2)
 
@@ -261,11 +260,12 @@ def service_order_resource(so_id: int) -> str:
 def asset_resource(asset_id: int) -> str:
     """
     Read-only view of an asset as formatted JSON.
-    
+
     Use this resource when you need to load asset/equipment context
     without making a direct API call. Ideal for agent reasoning tasks.
     """
     import json
+
     asset = get_asset(asset_id)
     return json.dumps(asset, indent=2)
 
@@ -278,10 +278,10 @@ def asset_resource(asset_id: int) -> str:
 def main():
     """Launch MCP server over stdio transport."""
     global _client
-    
+
     # Initialize SDK client
     _client = init_client()
-    
+
     # Run the MCP server
     mcp.run()
 

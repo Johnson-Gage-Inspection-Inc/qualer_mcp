@@ -4,6 +4,7 @@ Run with: python test_server.py
 """
 
 import sys
+
 import qualer_mcp_server
 
 print("Testing Qualer MCP Server...")
@@ -20,7 +21,7 @@ except Exception as e:
 # Test 2: Check MCP server exists
 print("\n2. Testing MCP server instance...")
 try:
-    assert hasattr(qualer_mcp_server, 'mcp')
+    assert hasattr(qualer_mcp_server, "mcp")
     print("   ✓ MCP server instance found")
 except AssertionError:
     print("   ✗ MCP server instance not found")

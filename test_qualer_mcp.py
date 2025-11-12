@@ -4,7 +4,7 @@ Basic tests for Qualer MCP Server
 Run with: pytest test_qualer_mcp.py
 """
 
-from qualer_mcp_server import ServiceOrder, Asset, PaginatedResponse
+from qualer_mcp_server import Asset, PaginatedResponse, ServiceOrder
 
 
 def test_service_order_model():
@@ -39,9 +39,7 @@ def test_paginated_response():
         ServiceOrder(id=1, number="SO-1", status="Open"),
         ServiceOrder(id=2, number="SO-2", status="Closed"),
     ]
-    page = PaginatedResponse(
-        items=items, next_cursor="cursor123", total_count=10
-    )
+    page = PaginatedResponse(items=items, next_cursor="cursor123", total_count=10)
     assert len(page.items) == 2
     assert page.next_cursor == "cursor123"
     assert page.total_count == 10
@@ -49,9 +47,7 @@ def test_paginated_response():
 
 def test_service_order_json_serialization():
     """Test JSON serialization of models."""
-    so = ServiceOrder(
-        id=789, number="SO-789", status="In Progress"
-    )
+    so = ServiceOrder(id=789, number="SO-789", status="In Progress")
     json_str = so.model_dump_json()
     assert '"id": 789' in json_str or '"id":789' in json_str
     assert "SO-789" in json_str
