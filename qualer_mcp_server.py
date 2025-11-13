@@ -19,6 +19,9 @@ from qualer_sdk.api.assets import get_all_assets
 from qualer_sdk.api.assets import get_asset as sdk_get_asset
 from qualer_sdk.api.assets import get_asset_manager_list
 from qualer_sdk.api.service_order_documents import get_documents_list
+from qualer_sdk.api.service_order_item_documents import (
+    get_documents_list_get_2,
+)
 from qualer_sdk.api.service_orders import get_work_order, get_work_orders
 
 # Load environment variables from .env file
@@ -104,7 +107,7 @@ def get_service_order(
         # Re-raise ValueError as-is
         raise
     except Exception as e:
-        raise ValueError(f"Error fetching service order {so_id}: {str(e)}") from e
+        raise ValueError(f"Error fetching service order {so_id}: {str(e)}") from e  # noqa: E501
 
 
 @mcp.tool()
@@ -329,6 +332,53 @@ def list_service_order_documents(
         raise
     except Exception as e:
         msg = f"Error fetching documents for SO {so_id}: {str(e)}"
+        raise ValueError(msg) from e
+
+
+@mcp.tool()
+def list_work_item_documents(
+    work_item_id: int = Field(
+        description="Service order item ID to list documents for"
+    ),
+    report_type: Optional[str] = Field(
+        default=None,
+        description="Filter by report type (optional)",
+    ),
+) -> dict:
+    """
+    List all documents attached to a service order work item.
+
+    Returns metadata for each document (filename, upload time, size).
+    """
+    client = get_client()
+
+    try:
+        response = get_documents_list_get_2.sync_detailed(
+            service_order_item_id=work_item_id,
+            client=client,
+            model_report_type=report_type,
+        )
+
+        if response.status_code == 404:
+            raise ValueError(f"Work item {work_item_id} not found")
+
+        if response.parsed is None:
+            msg = (
+                f"Failed to parse documents for work item "
+                f"{work_item_id}"
+            )
+            raise ValueError(msg)
+
+        # Convert list of SDK models to list of dicts
+        docs = [doc.to_dict() for doc in response.parsed]
+        return {"work_item_id": work_item_id, "documents": docs}
+
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
+    except Exception as e:
+        msg = f"Error fetching documents for work item {work_item_id}: "
+        msg += str(e)
         raise ValueError(msg) from e
 
 

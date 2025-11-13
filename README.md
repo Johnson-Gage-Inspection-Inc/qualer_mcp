@@ -9,7 +9,8 @@ Production-ready MCP server wrapping the Qualer SDK for AI agent integration. Ex
   - `search_service_orders` - Search with filters and pagination
   - `get_asset` - Fetch asset/equipment by ID
   - `search_assets` - Free-text asset search
-  - `list_service_order_documents` - List document metadata
+  - `list_service_order_documents` - List service order document metadata
+  - `list_work_item_documents` - List work item document metadata
 
 - **MCP Resources** for read-only context:
   - `qualer://service-order/{id}` - Service order as JSON
@@ -153,7 +154,8 @@ The server expects the following Qualer API endpoints (adjust in code if needed)
 - `GET /api/v1/service-orders?status=...&limit=...&cursor=...` - Search service orders
 - `GET /api/v1/assets/{id}` - Get asset
 - `GET /api/v1/assets` - List/search assets (server-side filtering)
-- `GET /api/v1/service-orders/{id}/documents` - List documents
+- `GET /api/v1/service-orders/{id}/documents` - List service order documents
+- `GET /api/v1/service-order-items/{id}/documents` - List work item documents
 
 ## Customization
 
