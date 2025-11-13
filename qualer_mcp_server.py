@@ -134,8 +134,13 @@ def search_service_orders(
     Supports filtering by status, company, work order number, and assigned
     employees. Returns paginated results.
 
-    Returns dict with 'items' (service order list, truncated to limit) and
-    'total' (total count of all matching orders, not limited).
+    Note: The underlying API does not support server-side pagination. Results
+    are fetched from the API and limited client-side. The 'total' field
+    reflects the number of records returned from the API after filtering,
+    not the total count of all matching records in the system.
+
+    Returns dict with 'items' (list of service orders, up to limit) and
+    'total' (count of orders returned from API after filtering).
     """
     client = get_client()
 
@@ -156,10 +161,8 @@ def search_service_orders(
             item.to_dict() for item in response.parsed
         ] if response.parsed else []
 
-        # Calculate total before limiting (represents all matching results)
+        # Apply limit (API does not support server-side pagination)
         total = len(items)
-
-        # Apply limit and return
         return {"items": items[:limit], "total": total}
 
     except ValueError:
@@ -225,10 +228,14 @@ def search_assets(
     Search/list assets with optional filtering.
 
     When server_side=True (default): Uses server-side search for efficiency.
+    The API returns up to limit matching results. 'total' reflects the count
+    of results returned from the server.
+
     When server_side=False: Fetches all assets and filters client-side.
+    'total' reflects all matching records across the entire dataset.
 
     Returns dict with 'items' (asset list, truncated to limit) and 'total'
-    (total count of matching assets across all results, not limited).
+    (count of matching assets in the result set).
 
     Server-side filtering recommended for production systems with many assets.
     """
