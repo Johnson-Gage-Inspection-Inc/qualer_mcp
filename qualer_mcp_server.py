@@ -7,9 +7,11 @@ Exposes Qualer API operations as MCP tools and read-only data as resources.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from typing import Optional
+from uuid import UUID
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -18,9 +20,13 @@ from qualer_sdk import AuthenticatedClient
 from qualer_sdk.api.assets import get_all_assets
 from qualer_sdk.api.assets import get_asset as sdk_get_asset
 from qualer_sdk.api.assets import get_asset_manager_list
-from qualer_sdk.api.service_order_documents import get_documents_list
+from qualer_sdk.api.service_order_documents import (
+    get_documents_list,
+    get_document,
+)
 from qualer_sdk.api.service_order_item_documents import (
     get_documents_list_get_2,
+    get_documents_get_2,
 )
 from qualer_sdk.api.service_orders import get_work_order, get_work_orders
 
@@ -379,6 +385,113 @@ def list_work_item_documents(
     except Exception as e:
         msg = f"Error fetching documents for work item {work_item_id}: "
         msg += str(e)
+        raise ValueError(msg) from e
+
+
+@mcp.tool()
+def get_service_order_document(
+    document_id: str = Field(
+        description="Document ID (UUID) to retrieve"
+    ),
+) -> dict:
+    """
+    Fetch a single service order document by its ID (UUID).
+
+    Returns the document content as base64-encoded data.
+    """
+    client = get_client()
+
+    try:
+        # Convert string UUID to UUID object
+        doc_uuid = UUID(document_id)
+        response = get_document.sync_detailed(
+            guid=doc_uuid,
+            client=client,
+        )
+
+        if response.status_code == 404:
+            raise ValueError(f"Document {document_id} not found")
+
+        if response.parsed is None:
+            raise ValueError(f"Failed to parse document {document_id}")
+
+        # response.parsed is bytes, encode as base64
+        content_b64 = base64.b64encode(response.parsed).decode("utf-8")
+        return {"document_id": document_id, "content": content_b64}
+
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
+    except Exception as e:
+        raise ValueError(
+            f"Error fetching document {document_id}: {str(e)}"
+        ) from e
+
+
+@mcp.tool()
+def get_work_item_document(
+    work_item_id: int = Field(
+        description="Service order item ID to retrieve documents for"
+    ),
+    file_name: str = Field(
+        description="Name of the document file to retrieve"
+    ),
+) -> dict:
+    """
+    Fetch a work item document by item ID and file name.
+
+    Returns the document content as base64-encoded data.
+    """
+    client = get_client()
+
+    try:
+        response = get_documents_get_2.sync_detailed(
+            service_order_item_id=work_item_id,
+            model_file_name=file_name,
+            client=client,
+        )
+
+        if response.status_code == 404:
+            raise ValueError(
+                f"Document {file_name} for work item {work_item_id} "
+                "not found"
+            )
+
+        if response.parsed is None:
+            raise ValueError(
+                f"Failed to parse document {file_name} for work item "
+                f"{work_item_id}"
+            )
+
+        # response.parsed is bytes or File, convert to base64
+        if isinstance(response.parsed, bytes):
+            content_b64 = base64.b64encode(response.parsed).decode(
+                "utf-8"
+            )
+        else:
+            # If it's a File object, read from its payload
+            payload = response.parsed.payload
+            if isinstance(payload, bytes):
+                content_b64 = base64.b64encode(payload).decode("utf-8")
+            else:
+                # File-like object, read it
+                content = payload.read()
+                content_b64 = base64.b64encode(content).decode("utf-8")
+
+        return {
+            "work_item_id": work_item_id,
+            "file_name": file_name,
+            "content": content_b64,
+        }
+
+    except ValueError:
+        # Re-raise ValueError as-is
+        raise
+    except Exception as e:
+        msg = (
+            f"Error fetching document {file_name} for work item "
+            f"{work_item_id}: {str(e)}"
+        )
         raise ValueError(msg) from e
 
 
