@@ -1,0 +1,4 @@
+[flake8]
+# Ignore line length violations (E501) - let black handle formatting
+ignore = E501
+max-line-length = 88
